@@ -1,34 +1,51 @@
 fn main() {
-    let color = "red";
-    let favorite = format!("My favorite color is {}", color);
+    let foo: i32 = Default::default();
+    println!("foo: {}", foo);
 
-    println!("{}", favorite);
+    let pizza: PizzaConfig = Default::default();
+    println!("wants_cheese: {}", pizza.wants_cheese);
 
-    let hello = "hello ";
-    let world = "world!";
-    let hello_world = format!("{}{}", hello, world);
-    println!("{}", hello_world);
+    println!("number_of_olives: {}", pizza.number_of_olives);
 
-    let favorite_num = format!("My favorite number is {}", 42);
-    println!("{}", favorite_num);
+    println!("special message: {}", pizza.special_message);
 
-    let duck_duck_goose = format!("{0}, {0}, {0}, {1}!", "duck", "goose");
-    println!("{}", duck_duck_goose);
+    let crust_type = match pizza.crust_type {
+        CrustType::Thin => "Nice and thin",
+        CrustType::Thick => "Extra thick and extra filling",
+    };
+    println!("crust_type: {}", crust_type);
 
-    let introduction = format!(
-        "My name is {surname}, {forename} {surname}",
-        surname="Bond",
-        forename="James"
-    );
-    println!("{}", introduction);
+    let custom_pizza = PizzaConfig {
+        number_of_olives: 12,
+        ..Default::default()
+    };
+    println!("{:?}", custom_pizza);
 
-    // b a a b
-    let re = format!("{1} {} {0} {}", "a", "b");
-    println!("{}", re);
-
-    // 1.24 round 1.23567 
-    // 1.23 round 1.23456
-    let re = format!("{:.*}", 2, 1.2356);
-    println!("{}", re);
+    let deluxe_custom_pizza = PizzaConfig {
+        number_of_olives: 12,
+        wants_cheese: true,
+        special_message: "Will you marry me?".to_owned(),
+        ..Default::default()
+    };
+    println!("{:?}", deluxe_custom_pizza);
 }
 
+#[derive(Default, Debug)]
+struct PizzaConfig {
+    wants_cheese: bool,
+    number_of_olives: i32,
+    special_message: String,
+    crust_type: CrustType,
+}
+
+#[derive(Debug)]
+enum CrustType {
+    Thin,
+    Thick,
+}
+
+impl Default for CrustType {
+    fn default() -> CrustType {
+        CrustType::Thin
+    }
+}
