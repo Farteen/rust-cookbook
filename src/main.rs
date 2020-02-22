@@ -8,6 +8,7 @@ fn by_moving() {
 }
 
 fn by_cloning() {
+    // string slice
     let hello = "hello ".to_string();
     let world = "world!";
     let hello_clone = hello.clone();
@@ -20,9 +21,15 @@ fn by_mutating() {
     let mut hello = "hello ".to_string();
     let world = "world!";
     hello.push_str(world);
-
+    // frame var -L hello
     println!("{}", hello);
 }
+// ???
+// fn by_copy() {
+    // let hello = "hello ".to_string();
+    // let world = "world!";
+    // let copied_hello = hello.by_copy();
+// }
 
 fn main() {
     by_moving();
