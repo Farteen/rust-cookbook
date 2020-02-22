@@ -1,51 +1,50 @@
 fn main() {
-    let foo: i32 = Default::default();
-    println!("foo: {}", foo);
-
-    let pizza: PizzaConfig = Default::default();
-    println!("wants_cheese: {}", pizza.wants_cheese);
-
-    println!("number_of_olives: {}", pizza.number_of_olives);
-
-    println!("special message: {}", pizza.special_message);
-
-    let crust_type = match pizza.crust_type {
-        CrustType::Thin => "Nice and thin",
-        CrustType::Thick => "Extra thick and extra filling",
-    };
-    println!("crust_type: {}", crust_type);
-
-    let custom_pizza = PizzaConfig {
-        number_of_olives: 12,
-        ..Default::default()
-    };
-    println!("{:?}", custom_pizza);
-
-    let deluxe_custom_pizza = PizzaConfig {
-        number_of_olives: 12,
-        wants_cheese: true,
-        special_message: "Will you marry me?".to_owned(),
-        ..Default::default()
-    };
-    println!("{:?}", deluxe_custom_pizza);
+    // let name_length = 
 }
 
-#[derive(Default, Debug)]
-struct PizzaConfig {
-    wants_cheese: bool,
-    number_of_olives: i32,
-    special_message: String,
-    crust_type: CrustType,
+struct NameLength {
+    name: String,
+    length: usize,
 }
 
-#[derive(Debug)]
-enum CrustType {
-    Thin,
-    Thick,
+impl NameLength {
+    fn new(name: &str) -> Self {
+        NameLength{
+            name: name.to_owned(),
+            length: name.len(),
+        }
+    }
+
+    fn print(&self) {
+        println!("The name '{}' is '{}' characters long", self.name, self.length);
+    }
 }
 
-impl Default for CrustType {
-    fn default() -> CrustType {
-        CrustType::Thin
+use std::borrow::Cow;
+struct NameLengthLT<'a> {
+    name: Cow<'a, str>,
+    length: usize,
+}
+
+impl<'a> NameLengthLT<'a> {
+    fn new<S>(name: S) -> Self
+    where 
+        S: Into<Cow<'a, str>>, {
+            let name: Cow<'a, str> = name.into();
+            /**
+             * watch out the diffs below
+            NameLengthLT {
+                length: name.len(),
+                name,
+            }
+             */
+            NameLengthLT {
+                length: name.len(),
+                name,
+            }
+        }
+
+    fn print(&self) {
+        println!("The name '{}‘ is '{}' characters long", self.name, self.length);
     }
 }
