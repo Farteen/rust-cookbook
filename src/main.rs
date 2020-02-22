@@ -21,5 +21,14 @@ fn main() {
         forename="James"
     );
     println!("{}", introduction);
+
+    // b a a b
+    let re = format!("{1} {} {0} {}", "a", "b");
+    println!("{}", re);
+
+    // 1.24 round 1.23567 
+    // 1.23 round 1.23456
+    let re = format!("{:.*}", 2, 1.2356);
+    println!("{}", re);
 }
 
