@@ -1,132 +1,56 @@
+use std::thread;
+
 fn main() {
-    let normal_burger = BurgerBuilder::new().build();
-    
-    let cheese_burger = BurgerBuilder::new()
-    .cheese(true)
-    .salad(false)
-    .build();
+    println!("{:?}", thread::current());
+    let child = thread::spawn(move || {
+        println!("{:?}", thread::current());
+        println!("hello from a new thread");
+    });
 
-    let veggie_bigmac = BurgerBuilder::new()
-    .vegetarian(true)
-    .patty_count(2)
-    .build();
+    println!("hello from the main thread");
 
-    if let Ok(normal_burger) = normal_burger {
-        normal_burger.print();
-    }
+    child.join().expect("failed to join the child thread");
 
-    if let Ok(cheese_burger) = cheese_burger {
-        cheese_burger.print();
-    }
+    let sum = parallel_sum(&[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    println!("The sum of the numbers 1 to 10 is {}", sum);
+}
 
-    if let Ok(veggie_bigmac) = veggie_bigmac {
-        veggie_bigmac.print();
-    }
+fn parallel_sum(range: &[i32]) -> i32 {
+    const NUM_THREADS: usize = 4;
+    if range.len() < NUM_THREADS {
+        sum_bucket(range)
+    } else {
+        let bucket_size = range.len() / NUM_THREADS;
+        let mut count = 0;
 
-    let invalid_burger = BurgerBuilder::new()
-    .vegetarian(true)
-    .bacon(true)
-    .build();
+        let mut threads = Vec::new();
+        while count + bucket_size < range.len() {
+            let bucket = range[count..count + bucket_size].to_vec();
 
-    if let Err(error) = invalid_burger {
-        println!("Failed to print burger: {}", error);
-    }
+            let thread = thread::Builder::new()
+            .name("calculation".to_owned())
+            .spawn(move|| {
+                println!("{:?}", thread::current());
+                sum_bucket(&bucket)
+            })
+            .expect("Failed to create the thread");
 
-    let cheese_burger_builder = BurgerBuilder::new().cheese(true);
-    for i in 1..10 {
-        let cheese_burger = cheese_burger_builder.build();
-        if let Ok(cheese_burger) = cheese_burger {
-            println!("cheese burger number {} is ready", i);
-            cheese_burger.print();
+            threads.push(thread);
+            count += bucket_size
         }
-    }
-}
+        let mut sum = sum_bucket(&range[count..]);
 
-struct Burger {
-    patty_count: i32,
-    vegetarian: bool,
-    cheese: bool,
-    bacon: bool,
-    salad: bool,
-}
-
-impl Burger {
-    fn print(&self) {
-        let pretty_patties = if self.patty_count == 1 {
-            "patty"
-        } else {
-            "patties"
-        };
-
-        let pretty_bool = |val| if val { "" } else { "no " };
-        let pretty_vegetarian = if self.vegetarian { "vegetarian " } else { "" };
-        println!("This is a {}burger with {} {}, {} cheese, {} bacon and {} salad", 
-            pretty_vegetarian,
-            self.patty_count,
-            pretty_patties,
-            pretty_bool(self.cheese),
-            pretty_bool(self.bacon),
-            pretty_bool(self.salad)
-        );
-    }
-}
-
-struct BurgerBuilder {
-    patty_count: i32,
-    vegetarian: bool,
-    cheese: bool,
-    bacon: bool,
-    salad: bool,
-}
-
-impl BurgerBuilder {
-    fn new() -> Self {
-        BurgerBuilder {
-            patty_count: 1,
-            vegetarian: false,
-            cheese: false,
-            bacon: false,
-            salad: true,
+        for thread in threads {
+            sum += thread.join().expect("Failed to join thread");
         }
+        sum
     }
+}
 
-    fn patty_count(mut self, val: i32) -> Self {
-        self.patty_count = val;
-        self
+fn sum_bucket(range: &[i32]) -> i32 {
+    let mut sum = 0;
+    for num in range {
+        sum += *num;
     }
-
-    fn vegetarian(mut self, val: bool) -> Self {
-        self.vegetarian = val;
-        self
-    }
-
-    fn cheese(mut self, val: bool) -> Self {
-        self.cheese = val;
-        self
-    }
-
-    fn salad(mut self, val: bool) -> Self {
-        self.salad = val;
-        self
-    }
-
-    fn bacon(mut self, val: bool) -> Self {
-        self.bacon = val;
-        self
-    }
-
-    fn build(&self) -> Result<Burger, String> {
-        let burger = Burger {
-            patty_count: self.patty_count,
-            vegetarian: self.vegetarian,
-            cheese: self.cheese,
-            bacon: self.bacon,
-            salad: self.salad,
-        };
-        if burger.vegetarian && burger.bacon {
-            Err("Sorry, but we dont server vegetarian bacon yet".to_string())
-        } else {
-            Ok(burger)
-        }
-    }
+    sum
 }
