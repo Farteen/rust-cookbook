@@ -1,38 +1,34 @@
-extern crate regex;
+use std::env;
 
 fn main() {
-    use regex::Regex;
-
-    let date_regex = Regex::new(r"^\d{2}.\d{2}.\d{4}$").expect("Failed to create regex");
-    let date = "15.10.2020";
-    let is_date = date_regex.is_match(date);
-    println!("Is '{}' a date? {}", date, is_date);
-
-    let date_regex = Regex::new(r"(\d{2}).(\d{2}).(\d{4})").expect("Failed to create regex");
-
-    let text_with_dates = "Alan Turing was born on 23.06.1912 and died on 07.06.1954. \
-        A movie a bout his life called 'The limitation Game' came out on 14.11.2017";
-    for cap in date_regex.captures_iter(text_with_dates) {
-        println!("Found date {}", &cap[0]);
-        println!("Year: {} Month: {} Day: {}", &cap[3], &cap[2], &cap[1]);
+    println!("Got follwing parameters: ");
+    for arg in env::args() {
+        println!("- {}", arg);
     }
 
-    println!("Original text:\t\t{}", text_with_dates);
-    let text_with_indian_dates = date_regex.replace_all(text_with_dates, "$1-$2-$3");
-    println!("In indian format: \t{}", text_with_indian_dates);
+    let mut args = env::args();
 
-    let text_with_american_dates = date_regex.replace_all(text_with_dates, "$month/$day/$year");
-    println!("In american format: \t {}", text_with_american_dates);
+    if let Some(arg) = args.nth(0) {
+        println!("The path to this program is: {}", arg);
+    }
 
-    let rust_regex = Regex::new(r"(?i)rust").expect("Failed to create regex");
-    println!("Do we match RuSt? {}", rust_regex.is_match("RuSt"));
+    if let Some(arg) = args.nth(1) {
+        println!("The second parameter is: {}", arg);
+    }
 
-    use regex::RegexBuilder;
+    if let Some(arg) = args.nth(2) {
+        println!("The second parameter is: {}", arg);
+    }
 
-    let rust_regex = RegexBuilder::new(r"rust")
-    .case_insensitive(true)
-    .build()
-    .expect("Failed to build regex");
-    println!("Do we still match RuSt? {}", rust_regex.is_match("RuSt"));
+    let args: Vec<_> = env::args().collect();
+    println!("The path to this program is: {}", args[0]);
+
+    if args.len() > 1 {
+        println!("The first parameter is: {}", args[1]);
+    }
+
+    if args.len() > 2 {
+        println!("The second parameter is: {}", args[2]);
+    }
 
 }
