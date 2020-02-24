@@ -14,6 +14,12 @@ fn main() {
     print_env_var(key);
 
 
+    println!("Removing env var {}", key);
+
+    env::remove_var(key);
+    print_env_var(key);
+
+    // dotenv diesel
 }
 
 fn print_env_var(key: &str) {
