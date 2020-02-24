@@ -1,34 +1,24 @@
 use std::env;
 
 fn main() {
-    println!("Got follwing parameters: ");
-    for arg in env::args() {
-        println!("- {}", arg);
+    println!("Listing all env vars");
+    for (key, val) in env::vars() {
+        println!("{}: {}", key, val);
     }
 
-    let mut args = env::args();
+    let key = "PORT";
+    println!("Setting env var {}", key);
 
-    if let Some(arg) = args.nth(0) {
-        println!("The path to this program is: {}", arg);
+    env::set_var(key, "8080");
+
+    print_env_var(key);
+
+
+}
+
+fn print_env_var(key: &str) {
+    match env::var(key) {
+        Ok(val) => println!("{}: {}", key, val),
+        Err(e) => println!("Couldn't print env var {}: {}", key, e),
     }
-
-    if let Some(arg) = args.nth(1) {
-        println!("The second parameter is: {}", arg);
-    }
-
-    if let Some(arg) = args.nth(2) {
-        println!("The second parameter is: {}", arg);
-    }
-
-    let args: Vec<_> = env::args().collect();
-    println!("The path to this program is: {}", args[0]);
-
-    if args.len() > 1 {
-        println!("The first parameter is: {}", args[1]);
-    }
-
-    if args.len() > 2 {
-        println!("The second parameter is: {}", args[2]);
-    }
-
 }
