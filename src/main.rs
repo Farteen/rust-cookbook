@@ -1,56 +1,38 @@
-use std::thread;
+extern crate regex;
 
 fn main() {
-    println!("{:?}", thread::current());
-    let child = thread::spawn(move || {
-        println!("{:?}", thread::current());
-        println!("hello from a new thread");
-    });
+    use regex::Regex;
 
-    println!("hello from the main thread");
+    let date_regex = Regex::new(r"^\d{2}.\d{2}.\d{4}$").expect("Failed to create regex");
+    let date = "15.10.2020";
+    let is_date = date_regex.is_match(date);
+    println!("Is '{}' a date? {}", date, is_date);
 
-    child.join().expect("failed to join the child thread");
+    let date_regex = Regex::new(r"(\d{2}).(\d{2}).(\d{4})").expect("Failed to create regex");
 
-    let sum = parallel_sum(&[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
-    println!("The sum of the numbers 1 to 10 is {}", sum);
-}
-
-fn parallel_sum(range: &[i32]) -> i32 {
-    const NUM_THREADS: usize = 4;
-    if range.len() < NUM_THREADS {
-        sum_bucket(range)
-    } else {
-        let bucket_size = range.len() / NUM_THREADS;
-        let mut count = 0;
-
-        let mut threads = Vec::new();
-        while count + bucket_size < range.len() {
-            let bucket = range[count..count + bucket_size].to_vec();
-
-            let thread = thread::Builder::new()
-            .name("calculation".to_owned())
-            .spawn(move|| {
-                println!("{:?}", thread::current());
-                sum_bucket(&bucket)
-            })
-            .expect("Failed to create the thread");
-
-            threads.push(thread);
-            count += bucket_size
-        }
-        let mut sum = sum_bucket(&range[count..]);
-
-        for thread in threads {
-            sum += thread.join().expect("Failed to join thread");
-        }
-        sum
+    let text_with_dates = "Alan Turing was born on 23.06.1912 and died on 07.06.1954. \
+        A movie a bout his life called 'The limitation Game' came out on 14.11.2017";
+    for cap in date_regex.captures_iter(text_with_dates) {
+        println!("Found date {}", &cap[0]);
+        println!("Year: {} Month: {} Day: {}", &cap[3], &cap[2], &cap[1]);
     }
-}
 
-fn sum_bucket(range: &[i32]) -> i32 {
-    let mut sum = 0;
-    for num in range {
-        sum += *num;
-    }
-    sum
+    println!("Original text:\t\t{}", text_with_dates);
+    let text_with_indian_dates = date_regex.replace_all(text_with_dates, "$1-$2-$3");
+    println!("In indian format: \t{}", text_with_indian_dates);
+
+    let text_with_american_dates = date_regex.replace_all(text_with_dates, "$month/$day/$year");
+    println!("In american format: \t {}", text_with_american_dates);
+
+    let rust_regex = Regex::new(r"(?i)rust").expect("Failed to create regex");
+    println!("Do we match RuSt? {}", rust_regex.is_match("RuSt"));
+
+    use regex::RegexBuilder;
+
+    let rust_regex = RegexBuilder::new(r"rust")
+    .case_insensitive(true)
+    .build()
+    .expect("Failed to build regex");
+    println!("Do we still match RuSt? {}", rust_regex.is_match("RuSt"));
+
 }
