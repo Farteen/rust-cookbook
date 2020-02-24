@@ -1,30 +1,52 @@
-use std::env;
+use std::io;
+use std::io::prelude::*;
 
 fn main() {
-    println!("Listing all env vars");
-    for (key, val) in env::vars() {
-        println!("{}: {}", key, val);
-    }
+    print_single_line("Please enter your forename: ");
+    let forename = read_line_iter();
 
-    let key = "PORT";
-    println!("Setting env var {}", key);
+    print_single_line("Please enter your surname: ");
+    let surname = read_line_buffer();
 
-    env::set_var(key, "8080");
+    print_single_line("Please enter your age: ");
+    let age = read_number();
 
-    print_env_var(key);
-
-
-    println!("Removing env var {}", key);
-
-    env::remove_var(key);
-    print_env_var(key);
-
-    // dotenv diesel
+    println!("Hello, {} year old human named {} {}!", age, forename, surname);
 }
 
-fn print_env_var(key: &str) {
-    match env::var(key) {
-        Ok(val) => println!("{}: {}", key, val),
-        Err(e) => println!("Couldn't print env var {}: {}", key, e),
+fn print_single_line(text: &str) {
+    print!("{}", text);
+    io::stdout().flush().expect("Failed to flush stdout");
+}
+
+fn read_line_iter() -> String {
+    let stdin = io::stdin();
+
+    let input = stdin.lock().lines().next();
+    input
+    .expect("no lines in buffer")
+    .expect("Failed to read line")
+    .trim()
+    .to_owned()
+}
+
+fn read_line_buffer() -> String {
+    let mut input = String::new();
+    io::stdin()
+    .read_line(&mut input)
+    .expect("Failed to read line");
+    input.trim().to_owned()
+}
+
+fn read_number() -> i32 {
+    let stdin = io::stdin();
+    loop {
+        for line in stdin.lock().lines() {
+            let input = line.expect("Failed to read line");
+            match input.trim().parse::<i32>() {
+                Ok(num) => return num,
+                Err(e) => println!("Failed to read number: {}", e),
+            }
+        }
     }
 }
