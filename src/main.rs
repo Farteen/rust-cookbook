@@ -97,6 +97,7 @@ fn main() {
     println!("Spliced stuff: {:?}", stuff);
     println!("Removed stuff: {:?}", removed_stuff);
 
+    // preallocation
     let mut large_vec: Vec<i32> = Vec::with_capacity(1000000);
     println!("large_vec after creation:");
     println!("len:\t\t{}", large_vec.len());
