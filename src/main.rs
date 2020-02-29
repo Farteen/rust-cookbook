@@ -1,34 +1,55 @@
-use std::collections::VecDeque;
+use std::collections::HashMap;
 
 fn main() {
-    let mut orders = VecDeque::new();
-    orders.push_back("oysters");
+    let mut tv_ratings = HashMap::new();
 
-    orders.push_back("fish and chips");
+    tv_ratings.insert("The IT Crowd", 8);
+    tv_ratings.insert("13 Reasons Why", 7);
+
+    let contains_tv_show = tv_ratings.contains_key("House of Cards");
+    println!("Did we rate House of Card? {}", contains_tv_show);
+
+    if let Some(rating) = tv_ratings.get("Breaking Bad") {
+        println!("I rate Breaking Bad {} out of 10", rating);
+    }
+
+    let old_rating = tv_ratings.insert("13 Reason Why", 9);
+    if let Some(old_rating) = old_rating {
+        println!("13 Reason Why's old rating was {} out of 10", old_rating);
+    }
+
+    let removed_value = tv_ratings.remove("The ID Crowd");
+    if let Some(removed_value) = removed_value {
+        println!("The removed series had a rating of {}", removed_value);
+    }
+
+    println!("All ratings");
+
+    for (key, value) in &tv_ratings {
+        println!("{}\t: {}", key, value);
+    }
+
+
+    let mut age = HashMap::with_capacity(10);
+    age.insert("Dory", 8);
+    age.insert("Nemo", 5);
+    age.insert("Merlin", 10);
+    age.insert("Bruce", 9);
+
+    println!("All ages:");
+    for age in age.values() {
+        println!("{}", age);
+    }
+
+    for age in age.values_mut() {
+        *age *= 10;
+        println!("{}", age);
+    }
+
+    {
+        // mut borrow
+        age.entry("coral").or_insert(11);
+    }
+    age.entry("coral").or_insert(15);
     
-    let prepared = orders.pop_front();
-    if let Some(prepared) = prepared {
-        println!("{} are ready", prepared);
-    }
-
-    orders.push_back("mozarella sticks");
-
-    let prepared = orders.pop_front();
-    if let Some(prepared) = prepared {
-        println!("{} are ready", prepared);
-    }
-
-    let mut some_queue = VecDeque::with_capacity(5);
-    some_queue.push_back("A");
-    some_queue.push_back("B");
-    some_queue.push_back("C");
-    some_queue.push_back("D");
-    some_queue.push_back("E");
-    println!("some_queue: {:?}", some_queue);
-
-    some_queue.swap_remove_back(2);
-    println!("some queue after swap_remove_back: {:?}", some_queue);
-
-    some_queue.swap_remove_front(2);
-    println!("some_queue after swap_remove_front: {:?}", some_queue);
 }
