@@ -1,34 +1,32 @@
+extern crate serde;
+extern crate serde_json;
+
 #[macro_use]
 extern crate serde_derive;
-extern crate toml;
 
 use std::io::{BufReader, BufWriter, Read, Seek, SeekFrom, Write};
 use std::fs::OpenOptions;
 
 #[derive(Serialize, Deserialize)]
-struct Preferences {
-    person: Person,
-    language: Language,
-    privacy: Privacy,
-}
-
-#[derive(Serialize, Deserialize)]
-struct Person {
+struct PetOwner {
     name: String,
-    email: String,
+    age: u8,
+    pets: Vec<Pet>,
 }
 
 #[derive(Serialize, Deserialize)]
-struct Language {
-    display: String,
-    autocorrect: Option<Vec<String>>,
+struct Pet {
+    name: String,
+    species: AllowedSpecies,
+    age: Option<u8>,
+    color: Option<String>,
 }
 
-#[derive(Serialize, Deserialize)]
-struct Privacy {
-    share_anonyymous_statistics: bool,
-    public_name: bool,
-    public_email: bool
+#[derive(Debug, Serialize, Deserialize)]
+enum AllowedSpecies {
+    Dog,
+    Turtle,
+    Cat,
 }
 
 fn main() {
@@ -36,62 +34,48 @@ fn main() {
     .read(true)
     .write(true)
     .create(true)
-    .open("./preferences.toml")
-    .expect("failed to create toml file");
-
-    // let buf_writer = BufWriter::new(&file);
-    // write_toml(buf_writer).expect("failed to write toml");
-
+    .open("pet_owner.json")
+    .expect("failed to create json file");
+    
+    let buf_writer = BufWriter::new(&file);
+    write_json(buf_writer).expect("failed to write json");
+    
     let mut buf_reader = BufReader::new(&file);
-    buf_reader
-    .seek(SeekFrom::Start(0))
-    .expect("Failed to jump to the beginning of the TOML file");
-    read_toml(buf_reader).expect("failed to read toml");
+    buf_reader.seek(SeekFrom::Start(0))
+    .expect("failed to jump to the beginning of the JSON file");
+    read_json(buf_reader).expect("failed to read json");
 }
 
-type SerializeResult<T> = Result<T, toml::ser::Error>;
-fn write_toml<W>(mut writer: W) -> SerializeResult<()>
+fn write_json<W>(mut writer: W) -> serde_json::Result<()>
 where
 W: Write,
 {
-    let preferences = Preferences {
-        person: Person {
-            name: "Jan Nils Ferner".to_string(),
-            email: "jn_ferner@hotmail.de".to_string(),
-        },
-        language: Language {
-            display: "en-GB".to_string(),
-            autocorrect: Some(vec![
-                "en-GB".to_string(),
-                "en-US".to_string(),
-                "de-CH".to_string(),
-            ])},
-        privacy: Privacy {
-            share_anonyymous_statistics: false,
-            public_name: true,
-            public_email: true,
-        },
+    let pet_owner = PetOwner {
+        name: "John".to_string(),
+        age: 23,
+        pets: vec![
+            Pet{
+                name: "Waldo".to_string(),
+                species: AllowedSpecies::Dog,
+                age: Some(2),
+                color: None,
+            },
+            Pet {
+                name: "Speedy".to_string(),
+                species: AllowedSpecies::Turtle,
+                age: Some(47),
+                color: Some("Green".to_string()),
+            },
+            Pet {
+                name: "Meows".to_string(),
+                species: AllowedSpecies::Cat,
+                age: None,
+                color: Some("Orange".to_string())
+            },
+        ]
     };
-    let toml = toml::to_string(&preferences)?;
-    writer.write_all(toml.as_bytes())
+    let json = serde_json::to_string(&pet_owner)?;
+    writer.write_all(json.as_bytes())
     .expect("failed to write file");
-    Ok(())
-}
-
-type DeserializeResult<T> = Result<T, toml::de::Error>;
-fn read_toml<R>(mut reader: R) -> DeserializeResult<()>
-where
-R: Read,
-{
-    let mut toml = String::new();
-    reader.read_to_string(&mut toml)
-    .expect("failed to read toml");
-    let preferences: Preferences = toml::from_str(&toml)?;
-    println!("Personal data:");
-
-    let person = &preferences.person;
-    println!("Name: {}", person.name);
-    println!("Email: {}", person.email);
-
     Ok(())
 }
