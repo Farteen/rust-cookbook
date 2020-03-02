@@ -1,43 +1,85 @@
 extern crate byteorder;
-use std::io::{Cursor, Seek, SeekFrom};
-use byteorder::{BigEndian, LittleEndian, ReadBytesExt,
-WriteByteExt};
+
+use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt, BE, LE};
+use std::fs::File;
+use std::io::{self, BufReader, BufWriter, Read};
+use std::io::prelude::*;
 
 fn main() {
-    let binary_nums = vec![2, 3, 12, 8, 5, 0];
-    let mut buff = Cursor::new(binary_nums);
-    let first_byte = buff.read_u8().expect("Failed to read byte");
-    println!("first byte in binary {:b}", first_byte);
+    let path = "./bar.bin";
+    write_dummy_protocol(path).expect("Failed to write file");
+    let payload = read_protocol(path).expect("Failed to read file");
+    print!("The protocol contained the following payload: ");
+    for num in payload {
+        println!("0x{:X}", num);
+    }
+    println!();
+}
 
-    let second_byte = buff.read_u8().expect("Failed to read byte");
-    println!("second byte as int: {}", second_byte);
+fn write_dummy_protocol(path: &str) -> io::Result<()> {
+    let file = File::create(path)?;
+    let mut buff_writer = BufWriter::new(file);
 
-    buff.write_u8(123).expect("Failed to overwrite a byte");
-    println!("After: {:?}", buff);
+    let magic = b"MyProtocol";
+    buff_writer.write_all(magic)?;
 
-    println!("Old position: {}", buff.position());
-    buff.set_position(0);
-    println!("New position: {}", buff.position());
+    let endianness = b"LE";
+    buff_writer.write_all(endianness)?;
 
-    buff.seek(SeekFrom::End(0)).expect("Faile to seek end");
-    println!("Last position: {}", buff.position());
+    buff_writer.write_u32::<LE>(0xDEAD)?;
+    buff_writer.write_u32::<LE>(0xBEEF)?;
+    Ok(())
 
-    buff.set_position(0);
+}
 
-    let as_u32 = buff.read_u32::<LittleEndian>().expect("Failed to read bytes");
-    println!("First four bytes as u32 in little endian order:\t{}",
-    as_u32);
+fn read_protocol(path: &str) -> io::Result<Vec<u32>> {
+    let file = File::open(path)?;
+    let mut buf_reader = BufReader::new(file);
 
-    buff.set_position(0);
-    let as_u32 = buff.read_u32::<BigEndian>().expect("Failed to read bytes");
-    println!("First four bytes as u32 in big endian order:\t{}",
-    as_u32);
+    let mut start = [0u8; 10];
+    buf_reader.read_exact(&mut start)?;
+    if &start != b"MyProtocol" {
+        return Err(io::Error::new(
+            io::ErrorKind::Other,
+            "Protocol didn't start with the expected magic string",
+        ));
+    }
 
-    buff.seek(SeekFrom::End(0)).expect("Failed to seek end");
-    buff.write_f32::<LittleEndian>(-33.4).expect("Failed to write to end");
+    let mut endian = [0u8; 2];
+    buf_reader.read_exact(&mut endian);
 
-    let mut read_buff = [0; 5];
-    buff.set_position(0);
-    buff.read_u16_into::<LittleEndian>(&mut read_buff).expect("Failed to read all bytes");
-    println!("All bytes as u16s in little endian order: {:?}", read_buff);
+    match &endian {
+        b"LE" => read_protocol_payload::<LE, _>(&mut buf_reader),
+        b"BE" => read_protocol_payload::<BE, _>(&mut buf_reader),
+        _ => Err(io::Error::new(
+            io::ErrorKind::Other,
+            "Failed to parse endianness",
+        )),
+    }
+}
+
+
+fn read_protocol_payload<E, R>(reader: &mut R) -> io::Result<Vec<u32>>
+where
+E: ByteOrder,
+R: ReadBytesExt
+{
+    let mut payload = Vec::new();
+    const SIZE_OF_U32: usize = 4;
+    loop {
+        let mut raw_payload = [0; SIZE_OF_U32];
+        match reader.read(&mut raw_payload)? {
+            0 => return Ok(payload),
+            SIZE_OF_U32 => {
+                let as_u32 = raw_payload.as_ref().read_u32::<E>()?;
+                payload.push(as_u32)
+            },
+            _ => {
+                return Err(io::Error::new(
+                    io::ErrorKind::UnexpectedEof,
+                    "Payload ended unexpectedly",
+                ))
+            }
+        }
+    }
 }
