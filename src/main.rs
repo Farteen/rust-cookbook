@@ -1,19 +1,34 @@
-extern crate csv;
-extern crate serde;
 #[macro_use]
 extern crate serde_derive;
+extern crate toml;
 
 use std::io::{BufReader, BufWriter, Read, Seek, SeekFrom, Write};
 use std::fs::OpenOptions;
 
 #[derive(Serialize, Deserialize)]
-#[serde(rename_all = "PascalCase")]
-struct Planet {
+struct Preferences {
+    person: Person,
+    language: Language,
+    privacy: Privacy,
+}
+
+#[derive(Serialize, Deserialize)]
+struct Person {
     name: String,
-    radius: f32,
-    #[serde(rename = "camelCase")]
-    distance_from_sun: f32,
-    gravity: f32,
+    email: String,
+}
+
+#[derive(Serialize, Deserialize)]
+struct Language {
+    display: String,
+    autocorrect: Option<Vec<String>>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct Privacy {
+    share_anonyymous_statistics: bool,
+    public_name: bool,
+    public_email: bool
 }
 
 fn main() {
@@ -21,91 +36,62 @@ fn main() {
     .read(true)
     .write(true)
     .create(true)
-    .open("solar_system_compared_to_earth.csv")
-    .expect("failed to create csv file");
+    .open("./preferences.toml")
+    .expect("failed to create toml file");
 
-    let buf_writer = BufWriter::new(&file);
-    write_records(buf_writer).expect("failed to write csv");
+    // let buf_writer = BufWriter::new(&file);
+    // write_toml(buf_writer).expect("failed to write toml");
 
     let mut buf_reader = BufReader::new(&file);
-    buf_reader.seek(SeekFrom::Start(0))
-    .expect("Failed to jump to the beginning of the csv");
-    read_records(buf_reader).expect("Failed to read csv");
+    buf_reader
+    .seek(SeekFrom::Start(0))
+    .expect("Failed to jump to the beginning of the TOML file");
+    read_toml(buf_reader).expect("failed to read toml");
 }
 
-fn write_records<W>(writer: W) -> csv::Result<()>
+type SerializeResult<T> = Result<T, toml::ser::Error>;
+fn write_toml<W>(mut writer: W) -> SerializeResult<()>
 where
 W: Write,
 {
-    let mut wtr = csv::Writer::from_writer(writer);
-
-    wtr.serialize(Planet {
-        name: "Mercury".to_owned(),
-        radius: 0.38,
-        distance_from_sun: 0.47,
-        gravity: 0.38,
-    })?;
-    wtr.serialize(Planet{
-        name: "Venus".to_owned(),
-        radius: 0.95,
-        distance_from_sun: 0.73,
-        gravity: 0.9,
-    })?;
-    wtr.serialize(Planet {
-        name: "Earth".to_string(),
-        radius: 1.0,
-        distance_from_sun: 1.0,
-        gravity: 1.0,
-    })?;
-    wtr.serialize(Planet {
-        name: "Mars".to_string(),
-        radius: 0.53,
-        distance_from_sun: 1.67,
-        gravity: 0.38,
-    })?;
-    wtr.serialize(Planet {
-        name: "Jupiter".to_string(),
-        radius: 11.21,
-        distance_from_sun: 5.46,
-        gravity: 2.53,
-    })?;
-    wtr.serialize(Planet {
-        name: "Saturn".to_string(),
-        radius: 9.45,
-        distance_from_sun: 10.12,
-        gravity: 1.07,
-    })?;
-    wtr.serialize(Planet {
-        name: "Uranus".to_string(),
-        radius: 4.01,
-        distance_from_sun: 20.11,
-        gravity: 0.89,
-    })?;
-    wtr.serialize(Planet {
-        name: "Neptune".to_string(),
-        radius: 3.88,
-        distance_from_sun: 30.33,
-        gravity: 1.14,
-    })?;
-    wtr.flush()?;
+    let preferences = Preferences {
+        person: Person {
+            name: "Jan Nils Ferner".to_string(),
+            email: "jn_ferner@hotmail.de".to_string(),
+        },
+        language: Language {
+            display: "en-GB".to_string(),
+            autocorrect: Some(vec![
+                "en-GB".to_string(),
+                "en-US".to_string(),
+                "de-CH".to_string(),
+            ])},
+        privacy: Privacy {
+            share_anonyymous_statistics: false,
+            public_name: true,
+            public_email: true,
+        },
+    };
+    let toml = toml::to_string(&preferences)?;
+    writer.write_all(toml.as_bytes())
+    .expect("failed to write file");
     Ok(())
 }
 
-fn read_records<R>(reader: R) -> csv::Result<()>
+type DeserializeResult<T> = Result<T, toml::de::Error>;
+fn read_toml<R>(mut reader: R) -> DeserializeResult<()>
 where
 R: Read,
 {
-    let mut rdr = csv::Reader::from_reader(reader);
-    println!("Comparing planets in the solar system with the earth");
-    println!("where a value of '1' means 'equal to earth'");
+    let mut toml = String::new();
+    reader.read_to_string(&mut toml)
+    .expect("failed to read toml");
+    let preferences: Preferences = toml::from_str(&toml)?;
+    println!("Personal data:");
 
-    for result in rdr.deserialize() {
-        println!("--------------------");
-        let planet: Planet = result?;
-        println!("Name: {}", planet.name);
-        println!("Radius: {}", planet.radius);
-        println!("Distance from sun: {}", planet.distance_from_sun);
-        println!("Surface gravity: {}", planet.gravity);
-    }
+    let person = &preferences.person;
+    println!("Name: {}", person.name);
+    println!("Email: {}", person.email);
+
     Ok(())
 }
