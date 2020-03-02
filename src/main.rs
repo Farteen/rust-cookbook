@@ -1,33 +1,50 @@
-extern crate slab;
-use slab::{Slab, VacantEntry};
+use std::io::Read;
+use std::fs::{File, OpenOptions};
+use std::io::{self, BufReader, BufWriter, Lines, Write};
+use std::io::prelude;
 
 fn main() {
-    const CAPACITY: usize = 1024;
-    let mut slab = Slab::with_capacity(CAPACITY);
+    let path = "./foo.txt";
+    println!("Writing some data to {}", path);
+    write_file(path, "Hello World!\n").expect("Failed to write to file")
 
-    let hello_key = slab.insert("hello");
-    let world_key = slab.insert("world");
-    println!("hello_key -> '{}'", slab[hello_key]);
-    println!("world_key -> '{}'", slab[world_key]);
+    // let content = read_file(path).expect("Failed to read file");
 
-    let data_key = {
-        let entry = slab.vacant_entry();
-        fill_some_data(entry)
-    };
-    println!("data_key -> '{}'", slab[data_key]);
-
-    for (key, val) in &slab {
-        println!("{} -> {}", key, val);
-    }
-
-    if slab.len() != slab.capacity() {
-        slab.insert("the slab is not at capacity yet");
-    }
 }
 
-fn fill_some_data(entry: VacantEntry<&str>) -> usize {
-    let data = "Some data";
-    let key = entry.key();
-    entry.insert(data);
-    key
+fn read_file(path: &str) -> io::Result<String> {
+    let file = File::open(path)?;
+    let mut buf_reader = BufReader::new(file);
+    let mut content = String::new();
+    buf_reader.read_to_string(&mut content)?;
+    Ok(content)
+}
+
+fn read_line_iterator(path: &str) -> io::Result<Lines<BufReader<File>>> {
+    let file = File::open(path)?;
+    let buf_reader = BufReader::new(file);
+    Ok(buf_reader.lines())
+}
+
+fn write_file(path: &str, content: &str) -> io::Result<()> {
+    let file = File::create(path)?;
+    let mut buf_writer = BufWriter::new(file);
+    buf_writer.write_all(content.as_bytes())?;
+    Ok(())
+}
+
+fn append_file(path: &str, content: &str) -> io::Result<()> {
+    let file = OpenOptions::new().append(true).open(path);
+    let mut buf_writer = BufWriter::new(file);
+    buf_writer.write_all(content.as_bytes())?;
+    Ok(())
+}
+
+fn append_and_read(path: &str, content: &str) -> io::Result<()> {
+    let file = OpenOptions::new().read(true).append(true).open(path)?;
+    let mut buf_reader = BufReader::new(&file);
+    let mut buf_writer = BufWriter::new(&file);
+
+    let mut file_content = String::new();
+    buf_reader.read_to_string(&mut file_content)?;
 }
