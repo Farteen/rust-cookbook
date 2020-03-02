@@ -7,9 +7,11 @@ use std::io::{BufReader, BufWriter, Read, Seek, SeekFrom, Write};
 use std::fs::OpenOptions;
 
 #[derive(Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
 struct Planet {
     name: String,
     radius: f32,
+    #[serde(rename = "camelCase")]
     distance_from_sun: f32,
     gravity: f32,
 }
@@ -38,7 +40,7 @@ W: Write,
     let mut wtr = csv::Writer::from_writer(writer);
 
     wtr.serialize(Planet {
-        name: "mercury".to_owned(),
+        name: "Mercury".to_owned(),
         radius: 0.38,
         distance_from_sun: 0.47,
         gravity: 0.38,
