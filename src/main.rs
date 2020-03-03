@@ -1,85 +1,19 @@
-extern crate byteorder;
+extern crate flate2;
 
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt, BE, LE};
-use std::fs::File;
-use std::io::{self, BufReader, BufWriter, Read};
+use std::io::{self, SeekFrom};
 use std::io::prelude::*;
 
+use flate2::{Compression, FlateReadExt};
+use flate2::write::ZlibEncoder;
+use flate2::write::ZlibDecoder;
+
+use std::fs::{File, OpenOptions};
+use std::io::{BufReader, BufWriter, Read};
+
 fn main() {
-    let path = "./bar.bin";
-    write_dummy_protocol(path).expect("Failed to write file");
-    let payload = read_protocol(path).expect("Failed to read file");
-    print!("The protocol contained the following payload: ");
-    for num in payload {
-        println!("0x{:X}", num);
-    }
-    println!();
-}
-
-fn write_dummy_protocol(path: &str) -> io::Result<()> {
-    let file = File::create(path)?;
-    let mut buff_writer = BufWriter::new(file);
-
-    let magic = b"MyProtocol";
-    buff_writer.write_all(magic)?;
-
-    let endianness = b"LE";
-    buff_writer.write_all(endianness)?;
-
-    buff_writer.write_u32::<LE>(0xDEAD)?;
-    buff_writer.write_u32::<LE>(0xBEEF)?;
-    Ok(())
-
-}
-
-fn read_protocol(path: &str) -> io::Result<Vec<u32>> {
-    let file = File::open(path)?;
-    let mut buf_reader = BufReader::new(file);
-
-    let mut start = [0u8; 10];
-    buf_reader.read_exact(&mut start)?;
-    if &start != b"MyProtocol" {
-        return Err(io::Error::new(
-            io::ErrorKind::Other,
-            "Protocol didn't start with the expected magic string",
-        ));
-    }
-
-    let mut endian = [0u8; 2];
-    buf_reader.read_exact(&mut endian);
-
-    match &endian {
-        b"LE" => read_protocol_payload::<LE, _>(&mut buf_reader),
-        b"BE" => read_protocol_payload::<BE, _>(&mut buf_reader),
-        _ => Err(io::Error::new(
-            io::ErrorKind::Other,
-            "Failed to parse endianness",
-        )),
-    }
-}
-
-
-fn read_protocol_payload<E, R>(reader: &mut R) -> io::Result<Vec<u32>>
-where
-E: ByteOrder,
-R: ReadBytesExt
-{
-    let mut payload = Vec::new();
-    const SIZE_OF_U32: usize = 4;
-    loop {
-        let mut raw_payload = [0; SIZE_OF_U32];
-        match reader.read(&mut raw_payload)? {
-            0 => return Ok(payload),
-            SIZE_OF_U32 => {
-                let as_u32 = raw_payload.as_ref().read_u32::<E>()?;
-                payload.push(as_u32)
-            },
-            _ => {
-                return Err(io::Error::new(
-                    io::ErrorKind::UnexpectedEof,
-                    "Payload ended unexpectedly",
-                ))
-            }
-        }
-    }
+    let bytes = b"I have a dream taht one day this nation will rise up,\
+    and live out the true meaning of its creed";
+    println!("Original: {:?}", bytes.as_ref());
+    let encoded = encode_bytes(bytes.as_ref()).expect("Failed to encode bytes");
+    println!("Decoded: {:?}", decoded);
 }
