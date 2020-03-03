@@ -1,19 +1,55 @@
-extern crate flate2;
+#[macro_use]
+extern crate lazy_static;
+extern crate regex;
 
-use std::io::{self, SeekFrom};
-use std::io::prelude::*;
+use regex::Regex;
+use std::collections::HashMap;
+use std::sync::RwLock;
 
-use flate2::{Compression, FlateReadExt};
-use flate2::write::ZlibEncoder;
-use flate2::write::ZlibDecoder;
+lazy_static! {
+    static ref CURRENCIES: HashMap<&'static str, &'static str> = {
+        let mut m = HashMap::new();
+        m.insert("EUR", "Euro");
+        m.insert("USD", "U.S. Dollar");
+        m.insert("CHF", "Swiss Francs");
+        m
+    };
+}
 
-use std::fs::{File, OpenOptions};
-use std::io::{BufReader, BufWriter, Read};
+lazy_static! {
+    static ref CLIENTS: RwLock<Vec<String>> = 
+    RwLock::new(Vec::new());
+}
+
+fn extract_day(date: &str) -> Option<&str> {
+    lazy_static! {
+        static ref RE: Regex = 
+        Regex::new(r"(\d{2}).(\d{2}).(\d{4})")
+        .expect("failed to create regex");
+    }
+    RE.captures(date)
+    .and_then(|cap| cap.get(1).map(|day| day.as_str()))
+}
 
 fn main() {
-    let bytes = b"I have a dream taht one day this nation will rise up,\
-    and live out the true meaning of its creed";
-    println!("Original: {:?}", bytes.as_ref());
-    let encoded = encode_bytes(bytes.as_ref()).expect("Failed to encode bytes");
-    println!("Decoded: {:?}", decoded);
+    let usd = CURRENCIES.get("USD");
+    if let Some(usd) = usd {
+        println!("USD stands for {}", usd);
+    }
+
+    if let Some(chf) = CURRENCIES.get("CHF") {
+        println!("CHF stands for {}", chf);
+    }
+
+    CLIENTS.write().expect("Failed to unlock clients for writing")
+    .push("192.168.0.1".to_string());
+
+    let clients = CLIENTS.read().expect("failed to unlock clients for reading");
+    let first_client = clients.get(0).expect("CLIENTS is empty");
+    println!("The first client is: {}", first_client);
+
+    let date = "12.01.2020";
+    if let Some(day) = extract_day(date) {
+        println!("The date \"{}\" contains the day \"{}\"", date, day);
+    }
 }
