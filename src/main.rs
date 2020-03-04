@@ -1,97 +1,97 @@
-use std::fs::File;
-use std::io::BufReader;
-use std::result::Result;
-use std::error::Error;
-use std::io::Read;
-use std::fmt::Debug;
+#[macro_use]
+extern crate log;
+
+use log::{Level, Metadata, Record};
+use std::fs::{File, OpenOptions};
+use std::io::{self, BufWriter, Write};
+use std::{error, fmt, result};
+use std::sync::RwLock;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Debug)]
-struct Node<T> {
-    data: T,
-    child_nodes: Option<(BoxedNode<T>, BoxedNode<T>)>,
+enum FileLoggerError {
+    Io(io::Error),
+    SetLogger(log::SetLoggerError),
 }
 
-type BoxedNode<T> = Box<Node<T>>;
+type Result<T> = result::Result<T, FileLoggerError>;
 
-impl<T> Node<T> {
-    fn new(data: T) -> Self {
-        Node {
-            data: data,
-            child_nodes: None,
+impl error::Error for FileLoggerError {
+    fn description(&self) -> &str {
+        match *self {
+            FileLoggerError::Io(ref err) => err.description(),
+            FileLoggerError::SetLogger(ref err) => err.description(),
         }
     }
 
-    fn is_leaf(&self) -> bool {
-        self.child_nodes.is_none()
-    }
-
-    fn add_child_nodes(&mut self, a: Node<T>, b: Node<T>) {
-        assert!(self.is_leaf(), "tried to add child_nodes to a node that is not a leaf");
-        self.child_nodes = Some((Box::new(a), Box::new(b)));
+    fn cause(&self) -> Option<&error::Error> {
+        match *self {
+            FileLoggerError::Io(ref err) => Some(err),
+            FileLoggerError::SetLogger(ref err) => Some(err),
+        }
     }
 }
 
-trait Animal: Debug {
-    fn sound(&self) -> &'static str;
-}
-
-#[derive(Debug)]
-struct Dog;
-
-impl Animal for Dog {
-    fn sound(&self) -> &'static str {
-        "Woof!"
+impl fmt::Display for FileLoggerError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            FileLoggerError::Io(ref err) => write!(f, "IO error: {}", err),
+            FileLoggerError::SetLogger(ref err) => write!(f, "Parse error: {}", err)
+        }
     }
 }
 
-#[derive(Debug)]
-struct Cat;
+struct FileLogger {
+    level: Level,
+    writer: RwLock<BufWriter<File>>,
+}
 
-impl Animal for Cat {
-    fn sound(&self) -> &'static str {
-        "Meow!"
+impl log::Log for FileLogger {
+    fn enabled(&self, metadata: &Metadata) -> bool {
+        metadata.level() <= self.level
+    }
+
+    fn log(&self, record: &Record) {
+        if self.enabled(record.metadata()) {
+            let mut writer = self.writer
+            .write()
+            .expect("failed to unlock log file writer in write mode");
+            let now = SystemTime::now();
+            let timestamp = now.duration_since(UNIX_EPOCH).expect("failed to generate timestamp: This system is opertating before unix epoch");
+            write!(writer, "{} {} at {}: {}\n", record.level(), timestamp.as_secs(), record.target(), record.args()).expect("failed to log to file");
+        }
+        self.flush();
+    }
+
+    fn flush(&self) {
+        self.writer.write()
+        .expect("failed to unlock log file writer in write mode")
+        .flush()
+        .expect("failed to flush log file writer");
     }
 }
+
+impl FileLogger {
+    fn init(level: Level, file_name: &str) -> Result<()> {
+        let file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(file_name)?;
+        let writer = RwLock::new(BufWriter::new(file));
+        let logger = FileLogger {level, writer};
+        log::set_max_level(level.to_level_filter());
+        log::set_boxed_logger(Box::new(logger))?;
+        Ok(())
+    }
+}
+
+
 
 fn main() {
-    let mut root = Node::new(12);
-    root.add_child_nodes(Node::new(3), Node::new(-24));
-    root.child_nodes.as_mut().unwrap().0
-    .add_child_nodes(Node::new(0), Node::new(1083));
-    println!("Our binary tree looks like this: {:?}", root);
-
-    let mut zoo: Vec<Box<Animal>> = Vec::new();
-    zoo.push(Box::new(Dog{}));
-    zoo.push(Box::new(Cat{}));
-    for animal in zoo {
-        println!("{:?} says {}", animal, animal.sound());
-    }
-
-    for word in caps_words_iter("do you feel lock, punk?") {
-        println!("{}", word);
-    }
-
-    let num = read_file_as_number("number.txt").expect("failed to read the file as a number");
-    println!("number.txt contains the number {}", num);
-
-    let multiplier = create_multiplier(23);
-    let result = multiplier(3);
-    println!("23 * 3", result);
-}
-
-fn caps_words_iter<'a>(text: &'a str) -> Box<Iterator<Item = String> + 'a> {
-    Box::new(text.trim().split(' ').map(|word| word.to_uppercase()))
-}
-
-fn read_file_as_number(filename: &str) -> Result<i32, Box<Error>> {
-    let file = File::open((filename))?;
-    let mut buf_reader = BufReader::new(file);
-    let mut content = String::new();
-    buf_reader.read_to_string(&mut content);
-    let number: i32 = content.parse()?;
-    Ok(number)
-}
-
-fn create_multiplier(a: i32) -> Box<Fn(i32) -> i32> {
-    Box::new(move |b| a * b)
+    FileLogger::init(Level::Info, "./log.txt").expect("Failed to init FileLogger");
+    trace!("Beginning the operation");
+    info!("It's moving");
+    error!("It's alive!");
+    debug!("Dr. Frankenstein now knows it feels to be god");
+    trace!("End of the operation");
 }
