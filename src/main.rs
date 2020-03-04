@@ -1,85 +1,97 @@
-use std::ops::MulAssign;
-use std::ops::Display;
+use std::fs::File;
+use std::io::BufReader;
+use std::result::Result;
+use std::error::Error;
+use std::io::Read;
+use std::fmt::Debug;
 
 #[derive(Debug)]
-struct DoubleVec<T>(Vec<T>);
+struct Node<T> {
+    data: T,
+    child_nodes: Option<(BoxedNode<T>, BoxedNode<T>)>,
+}
 
-impl<T> From<Vec<T>> for DoubleVec<T>
-where
-T: MulAssign<i32>,
-{
-    fn from(mut vec: Vec<T>) -> Self {
-        for elem in &mut vec {
-            *elem *= 2;
+type BoxedNode<T> = Box<Node<T>>;
+
+impl<T> Node<T> {
+    fn new(data: T) -> Self {
+        Node {
+            data: data,
+            child_nodes: None,
         }
-        DoubleVec(vec)
+    }
+
+    fn is_leaf(&self) -> bool {
+        self.child_nodes.is_none()
+    }
+
+    fn add_child_nodes(&mut self, a: Node<T>, b: Node<T>) {
+        assert!(self.is_leaf(), "tried to add child_nodes to a node that is not a leaf");
+        self.child_nodes = Some((Box::new(a), Box::new(b)));
     }
 }
 
-impl<'a, T> From<&'a [T]> for DoubleVec<T>
-where
-T: MulAssign<i32> + Clone,
-{
-    fn from(slice: &[T]) -> Self {
-        slice.to_vec().into()
+trait Animal: Debug {
+    fn sound(&self) -> &'static str;
+}
+
+#[derive(Debug)]
+struct Dog;
+
+impl Animal for Dog {
+    fn sound(&self) -> &'static str {
+        "Woof!"
     }
 }
 
-impl<T> AsRef<Vec<T>> for DoubleVec<T> {
-    fn as_ref(&self) -> &Vec<T> {
-        &self.0
+#[derive(Debug)]
+struct Cat;
+
+impl Animal for Cat {
+    fn sound(&self) -> &'static str {
+        "Meow!"
     }
 }
 
 fn main() {
-    let hello_world = "Hello world".to_string();
-    let hello_world: String = "Hello world".into();
-    let hello_world = String::from("hello world");
+    let mut root = Node::new(12);
+    root.add_child_nodes(Node::new(3), Node::new(-24));
+    root.child_nodes.as_mut().unwrap().0
+    .add_child_nodes(Node::new(0), Node::new(1083));
+    println!("Our binary tree looks like this: {:?}", root);
 
-    let hello_world_bytes: Vec<u8> = "hello world".into();
-    let hello_world_bytes = Vec::<u8>::from("hello world");
-
-    let vec = vec![1, 2, 3];
-    let double_vec = DoubleVec::from(vec)
-    println!("Creating a DoubleVec from a Vec: {:?}", double_vec);
-
-    let vec = vec![1, 2, 3];
-    let double_vec: DoubleVec<_> = vec.into();
-    println!("Converting a Vec into a DoubleVec: {:?}", double_vec);
-    print_elements(double_vec.as_ref());
-
-    easy_public_func(Some(1337), Some(123), None);
-
-    ergonomic_public_func(1337, 123, None);
-
-}
-
-fn print_elements<T>(slice: &[T])
-where
-T: Display,
-{
-    for elem in slice {
-        println!("{}", elem);
+    let mut zoo: Vec<Box<Animal>> = Vec::new();
+    zoo.push(Box::new(Dog{}));
+    zoo.push(Box::new(Cat{}));
+    for animal in zoo {
+        println!("{:?} says {}", animal, animal.sound());
     }
-    println!();
+
+    for word in caps_words_iter("do you feel lock, punk?") {
+        println!("{}", word);
+    }
+
+    let num = read_file_as_number("number.txt").expect("failed to read the file as a number");
+    println!("number.txt contains the number {}", num);
+
+    let multiplier = create_multiplier(23);
+    let result = multiplier(3);
+    println!("23 * 3", result);
 }
 
-fn easy_public_func(foo: Option<i32>, bar: Option<i32>, baz: Option<i32>) {
-    println!(
-        "easy_public_func = foo: {:?}, bar: {:?}, baz: {:?}",
-        foo,
-        bar,
-        baz
-    );
+fn caps_words_iter<'a>(text: &'a str) -> Box<Iterator<Item = String> + 'a> {
+    Box::new(text.trim().split(' ').map(|word| word.to_uppercase()))
 }
 
-fn ergonomic_public_func<Foo, Bar, Baz>(foo: Foo, bar: Bar, baz: Baz)
-where
-Foo: Into<Option<i32>>,
-Bar: Into<Option<i32>>,
-Baz: Into<Option<i32>>,
-{
-    let foo: Option<i32> = foo.into();
-    let bar: Option<i32> = bar.into();
-    let baz: Option<i32> = baz.into();
+fn read_file_as_number(filename: &str) -> Result<i32, Box<Error>> {
+    let file = File::open((filename))?;
+    let mut buf_reader = BufReader::new(file);
+    let mut content = String::new();
+    buf_reader.read_to_string(&mut content);
+    let number: i32 = content.parse()?;
+    Ok(number)
+}
+
+fn create_multiplier(a: i32) -> Box<Fn(i32) -> i32> {
+    Box::new(move |b| a * b)
 }
