@@ -1,47 +1,46 @@
-extern crate rand;
-use rand::Rng;
+use std::sync::{Arc, RwLock};
 use std::thread;
-use std::sync::mpsc::channel;
 
 fn main() {
-    let (tx, rx) = channel();
+    let resource = Arc::new(RwLock::new("Hello world".to_string()));
 
-    for i in 0..10 {
-        let tx = tx.clone();
+    let reader_a = {
+        let resource = resource.clone();
         thread::spawn(move || {
-            println!("Sending: {}", i);
-            tx.send(i).expect("Disconnect from receiver");
-        });
-    }
-
-    for _ in 0..10 {
-        let msg = rx.recv().expect("Disconnected from sender");
-        println!("received: {}", msg);
-    }
-
-    let (tx, rx) = channel();
-    const DISCONNECT: &str = "Goodbye!";
-    thread::spawn(move || {
-        let mut rng = rand::thread_rng();
-
-        loop {
-            let msg = match rng.gen_range(0, 5) {
-                0 => "hi",
-                1 => DISCONNECT,
-                2 => "Howdy there, cowboy",
-                3 => "How are you?",
-                4 => "I'm good, thanks",
-                _ => unreachable!(),
-            };
-            println!("sending: {}", msg);
-            tx.send(msg).expect("Disconnected from receiver");
-            if msg == DISCONNECT {
-                break;
+            for _ in 0..40 {
+                let resource = resource
+                .read()
+                .expect("failed to lock resource for reading");
+                println!("Reader A says: {}", resource);
             }
-        }
-    });
+        })
+    };
 
-    for msg in rx {
-        println!("received: {}", msg);
-    }
+    let reader_b = {
+        let resource = resource.clone();
+        thread::spawn(move || {
+            for _ in 0..40 {
+                let resource = resource
+                .read()
+                .expect("failed to lock resource for reading");
+                println!("Reader B says: {}", resource);
+            }
+        })
+    };
+
+    let writer = {
+        let resource = resource.clone();
+        thread::spawn(move || {
+            for _ in 0..10 {
+                let mut resource = resource
+                .write()
+                .expect("failed to lock resource for writing");
+                resource.push('!');
+            }
+        })
+    };
+
+    reader_a.join().expect("Reader A panicked");
+    reader_b.join().expect("Reader B panicked");
+    writer.join().expect("Writer panicked");
 }
