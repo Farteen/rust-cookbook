@@ -1,15 +1,41 @@
 extern crate rayon;
 use rayon::prelude::*;
 
+#[derive(Debug)]
+struct Rectangle {
+    height: u32,
+    width: u32,
+}
+
+impl Rectangle {
+    fn area(&self) -> u32 {
+        self.height * self.width
+    }
+
+    fn perimeter(&self) -> u32 {
+        2 * (self.height + self.width)
+    }
+}
+
 fn main() {
-    let legend = "Did you ever hear the tragedy of Darth Plague is The Wise?";
-    let words: Vec<_> = legend.split_whitespace().collect();
+    let rect = Rectangle {
+        height: 30,
+        width: 20,
+    };
+    let (area, perimeter) = rayon::join(|| rect.area(), || rect.perimeter());
+    println!("{:?}", rect);
+    println!("area: {}", area);
+    println!("perimeter: {}", perimeter);
 
-    words.par_iter().for_each(|val| println!("{}", val));
+    let fib = fibonacci(6);
+    println!("The sixth number in the fibonacci sequence is {}", fib);
+}
 
-    let words_with_a: Vec<_> = words
-    .par_iter()
-    .filter(|val| val.find('a').is_some())
-    .collect();
-    println!("The following words contain the letter 'a': {:?}", words_with_a);
+fn fibonacci(n: u32) -> u32 {
+    if n == 0 || n == 1 {
+        n
+    } else {
+        let (a, b) = rayon::join(|| fibonacci(n - 1), || fibonacci(n - 2));
+        a + b
+    }
 }
