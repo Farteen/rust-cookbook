@@ -1,65 +1,15 @@
-use std::ops::Deref;
-
-struct SomeOsSpecificFunctionalityHandle;
-
-struct SomeOsFunctionality<T> {
-    data: T,
-    inner: Box<SomeOsSpecificFunctionalityHandle>,
-}
-
-struct SomeOsFunctionalityGuard<'a, T: 'a> {
-    lock: &'a SomeOsFunctionality<T>,
-}
-
-impl SomeOsSpecificFunctionalityHandle {
-    unsafe fn lock(&self) {
-
-    }
-
-    unsafe fn unlock(&self) {
-
-    }
-}
-
-impl<T> SomeOsFunctionality<T> {
-    fn new(data: T) -> Self {
-        let handle = SomeOsSpecificFunctionalityHandle;
-        SomeOsFunctionality {
-            data,
-            inner: Box::new(handle)
-        }
-    }
-
-    fn lock(&self) -> SomeOsFunctionalityGuard<T> {
-        unsafe {
-            self.inner.lock();
-        }
-
-        SomeOsFunctionalityGuard {
-            lock: self
-        }
-    }
-}
-
-impl<'a, T> Drop for SomeOsFunctionalityGuard<'a, T> {
-    fn drop(&mut self) {
-        unsafe {
-            self.lock.inner.unlock();
-        }
-    }
-}
-
-impl<'a, T> Deref for SomeOsFunctionalityGuard<'a, T> {
-    type Target = T;
-    fn deref(&self) -> &T {
-        &self.lock.data
-    }
-}
+extern crate rayon;
+use rayon::prelude::*;
 
 fn main() {
-    let foo = SomeOsFunctionality::new("hello world");
-    {
-        let bar = foo.lock();
-        println!("The string behind foo is {} characters long", bar.len());
-    }
+    let legend = "Did you ever hear the tragedy of Darth Plague is The Wise?";
+    let words: Vec<_> = legend.split_whitespace().collect();
+
+    words.par_iter().for_each(|val| println!("{}", val));
+
+    let words_with_a: Vec<_> = words
+    .par_iter()
+    .filter(|val| val.find('a').is_some())
+    .collect();
+    println!("The following words contain the letter 'a': {:?}", words_with_a);
 }
