@@ -1,41 +1,24 @@
-extern crate rayon;
-use rayon::prelude::*;
+use std::thread;
+use std::sync::Arc;
 
-#[derive(Debug)]
-struct Rectangle {
-    height: u32,
-    width: u32,
-}
-
-impl Rectangle {
-    fn area(&self) -> u32 {
-        self.height * self.width
-    }
-
-    fn perimeter(&self) -> u32 {
-        2 * (self.height + self.width)
-    }
-}
 
 fn main() {
-    let rect = Rectangle {
-        height: 30,
-        width: 20,
+    let some_resource = Arc::new("Hello world".to_string());
+
+    let thread_a = {
+        let some_resource = some_resource.clone();
+        thread::spawn(move || {
+            println!("Thread A says: {}", some_resource);
+        })
     };
-    let (area, perimeter) = rayon::join(|| rect.area(), || rect.perimeter());
-    println!("{:?}", rect);
-    println!("area: {}", area);
-    println!("perimeter: {}", perimeter);
 
-    let fib = fibonacci(6);
-    println!("The sixth number in the fibonacci sequence is {}", fib);
-}
+    let thread_b = {
+        let some_resource = some_resource.clone();
+        thread::spawn(move || {
+            println!("Thread B says: {}", some_resource);
+        })
+    };
 
-fn fibonacci(n: u32) -> u32 {
-    if n == 0 || n == 1 {
-        n
-    } else {
-        let (a, b) = rayon::join(|| fibonacci(n - 1), || fibonacci(n - 2));
-        a + b
-    }
+    thread_a.join().expect("Thread A panicked");
+    thread_b.join().expect("Thread B panicked");
 }
